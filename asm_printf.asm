@@ -8,8 +8,6 @@ global asm_flush
 extern GetStdHandle
 extern WriteConsoleA
 
-; BAH: Make correct return value
-
 ;=====================Microsoft x64 calling convention==========================
 ; First four arguments are passed in RCX, RDX, R8, R9 (in that order)
 ; Additional arguments are pushed onto the stack from (right to left)
@@ -53,8 +51,9 @@ section .text
 ; --Copy character to buffer procedure------------------------------------------
 ; brief:        Copy the character to the buffer
 ;               If the buffer is full outputs it and copies the character
+;               Increments R13, needed to count the output characters
 ; entry:        AL - Character to print
-; destroys:     RCX
+; destroys:     RCX, R13
 ; ------------------------------------------------------------------------------
 print_char:                                                 ; BAH: Should i do it by macro?
 
@@ -62,6 +61,7 @@ print_char:                                                 ; BAH: Should i do i
                 add  rcx,  buffer
                 mov  BYTE  [rcx], al
                 inc  QWORD [buffer.len]
+                inc  r13
                                                             ; BAH: Buffer overflow check only after writing,
                                                             ; so that output can be output without a buffer.
                                                             ; How can I do this better?
@@ -108,8 +108,9 @@ asm_printf:
                 push rbp                                    ; Stack frame
                 mov  rbp, rsp                               ;
 
-                push rbx, rdi, rsi                          ; See Microsoft x64 calling convention
+                push rbx, rdi, rsi, r12, r13                ; See Microsoft x64 calling convention
 
+                xor  r13, r13                               ; R13 := Number of characters actually printed
                 mov  r12, 2 * 8                             ; First argument offset
                 .get_arg rsi
 
@@ -128,11 +129,11 @@ asm_printf:
 .character:     call print_char                             ; BAH: Does it make sense to search for '%' by bytes but copy to the buffer by QWORDs?
                 jmp  .next_sym
 
-.new_line:      call  asm_flush
-                jmp  .character
+.new_line:      call  print_char
+                call  asm_flush
+                jmp   .next_sym
 
-.format_spec:   xor  rax, rax                               ; Maybe I should zeroize the high bits after the al checks?
-                lodsb
+.format_spec:   lodsb
 
                 cmp  al, '%'                                ; "...%%..." => '%'
                 je   .character
@@ -140,21 +141,21 @@ asm_printf:
                 test al, al                                 ; "...%" => final
                 je   .final
 
-                sub  al, 'a'                                ; AL := index in JMP_TABLE
-
-                cmp  al, JMP_TABLE.SIZE                     ; Check the boundaries
+                xor  rbx, rbx
+                mov  bl, al
+                                                            ; Check the boundaries
+                cmp  bl, JMP_TABLE.SIZE + 'a' - 1           ; 'a' is needed to not subtract from the register
                 ja   .spec_invalid                          ;
-                cmp  al, 0                                  ;
+                cmp  bl, 'a'                                ;
                 jl   .spec_invalid                          ;
 
-                mov  rbx, rax
-                .get_arg  rax                               ; BAH: Is it worth saving on code size here?
-                jmp  QWORD [JMP_TABLE + 8 * rbx]            ; OMG THX NASM
+                .get_arg  rax                               ; RAX := Argument specifying data to print
+                jmp  QWORD [JMP_TABLE + 8 * (rbx - 'a')]    ; OMG THX NASM
 ;--Printf format specifiers---------------------------------
 
-.spec_invalid:  call print_char
+.spec_invalid:  mov  al, bl
+                call print_char
                 jmp .next_sym
-
 ;BAH: Do I need to make another function to divide by 2^n?
 
 .spec_2n_number 2                                           ; See .spec_2n_number macro
@@ -188,7 +189,8 @@ asm_printf:
                 jmp  .next_sym
 ;--End of printf format specifiers--------------------------
 
-.final:         pop  rbx, rdi, rsi                          ; See Microsoft x64 calling convention
+.final:         mov  rax, r13
+                pop  rbx, rdi, rsi, r12, r13                ; See Microsoft x64 calling convention
 
                 pop  rbp                                    ; Epilogue
                 pop  r10                                    ; Save return value
@@ -316,6 +318,6 @@ JMP_TABLE:      dq asm_printf.spec_invalid                  ; %a
                 times 'z' - 'y' + 1 \
                         dq asm_printf.spec_invalid          ; %y - %z
 
-.SIZE           equ $ - JMP_TABLE
+.SIZE           equ ($ - JMP_TABLE) / 8
 
 NUMBER_TABLE    db '0123456789abcdef'
