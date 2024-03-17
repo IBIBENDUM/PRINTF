@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include "colors.h"
 
-extern "C" void asm_printf(const char* format, ...);
-extern "C" void asm_flush();
+#include "asm_printf.h"
 
 int main()
 {

@@ -1,7 +1,7 @@
 .PHONY:	clean run compile compile_and_run
 
 CFLAGS = -lkernel32 -Wl,--default-image-base-low -g
-CC = g++
+CXX = g++
 
 compile_and_run: compile run
 test: asm_printf test_compile run_test

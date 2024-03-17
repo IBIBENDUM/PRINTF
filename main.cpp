@@ -1,11 +1,9 @@
 #include <stdio.h>
-
-extern "C" int  asm_printf(const char* format, ...);
-extern "C" void asm_flush();
+#include "asm_printf.h"
 
 int main()
 {
-    asm_printf("Hello world!\n");
+    asm_printf("Hello world!");
     asm_flush();
     return 0;
 }
