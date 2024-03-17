@@ -1,26 +1,26 @@
-.PHONY:	clean run compile compile_and_run
+.PHONY:	clean run run_test
 
 CFLAGS = -lkernel32 -Wl,--default-image-base-low -g
-CXX = g++
+CXX    = g++
 
+compile: asm_printf main test_compile
 compile_and_run: compile run
 test: asm_printf test_compile run_test
-compile: asm_printf main test_compile
 
 asm_printf:
 	nasm -f win64 asm_printf.asm
 
 main:
-	$(CC) -o main.exe main.cpp asm_printf.obj $(CFLAGS)
+	$(CXX) -o main main.cpp asm_printf.obj $(CFLAGS)
 
 test_compile:
-	$(CC) -o test.exe test_printf.cpp asm_printf.obj $(CFLAGS)
+	$(CXX) -o test test_printf.cpp asm_printf.obj $(CFLAGS)
 
 run:
-	main.exe
+	main
 
 run_test:
-	test.exe
+	test
 
 clean:
 	del asm_printf.obj main.o test.o
