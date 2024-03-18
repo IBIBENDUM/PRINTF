@@ -10,14 +10,15 @@ The code provides the possibility of output without buffer, but the interface is
 
 ## Supported specifiers
 
-| Type   | Output |
-|--------|--------|
-| %d      | Signed decimal  |
-| %b      | Unsigned binary |
-| %o      | Unsigned octal  |
+| Type    | Output                                   |
+|---------|------------------------------------------|
+| %d      | Signed decimal                           |
+| %b      | Unsigned binary                          |
+| %o      | Unsigned octal                           |
 | %x      | Unsigned hexadecimal integer (lowercase) |
-| %c      | Single character |
-| %s      | Character string |
+| %c      | Single character                         |
+| %s      | Character string                         |
+| %%      | Write a single %                         |
 
 Percentage is skipped when an unknown specifier is encountered.
 
